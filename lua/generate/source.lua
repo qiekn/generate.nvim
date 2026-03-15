@@ -28,7 +28,7 @@ local default_param_query = ts_util.parse_query_wrapper(
 )
 
 -- TODO: Delegate this to user config
-local brace_pattern = '\n{\n\n}\n\n'
+local brace_pattern = ' {\n\n}\n\n'
 
 local function is_include_present(root, bufnr, include)
   local includes = ts_util.children_with_type('preproc_include', root)
