@@ -117,7 +117,7 @@ function M.implement_methods(namespaces)
   -- It is neccessary to reload the buffer because
   -- in some cases Neovim doesn't render the newly
   -- added text.
-  api.nvim_command(":edit")
+  api.nvim_command(':edit')
 end
 
 function M.insert_header(header_path)

@@ -18,14 +18,14 @@ local exension_index = {
 local source_dir_names = { 'source', 'src' }
 local include_dir_names = { 'include', 'inc' }
 
-local is_windows = fn.has("win32") or fn.has("win64")
+local is_windows = fn.has('win32') or fn.has('win64')
 
 -- Logically is something like 'cd ..'
 local function remove_basename(filepath)
   -- use \ as separator for paths if on Windows
-  local separator = "/"
+  local separator = '/'
   if is_windows ~= 0 then
-    separator = "\\"
+    separator = '\\'
   end
 
   local first = nil
