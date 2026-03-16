@@ -108,7 +108,7 @@ end
 
 function M.append_to_file(path, content)
   local fd = uv.fs_open(path, 'a', 438)
-  uv.fs_write(fd, content .. '\n\n', 0)
+  uv.fs_write(fd, content, 0)
   uv.fs_close(fd)
 end
 

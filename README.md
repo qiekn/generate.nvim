@@ -43,3 +43,13 @@ and the C++ parser, which can be installed via `:TSInstall cpp`
 
 To generate method implementations simply run `:Generate implementations`
 from the header file.
+
+## Features
+
+- Namespace-aware: declarations inside `namespace` blocks are wrapped in
+  `namespace X { ... }  // namespace X` instead of using `X::` prefix
+- Nested namespace support (`namespace a { namespace b { ... } }`)
+- Class/struct method generation with proper `ClassName::` prefix
+- Visual range selection — generate only selected declarations
+- Automatic `#include` header insertion in source files
+- Google brace style output

@@ -42,8 +42,8 @@ local function is_include_present(root, bufnr, include)
   return false
 end
 
-local function declaration_to_implementation(declaration, namespace, bufnr)
-  local prefix = namespace .. '::'
+local function declaration_to_implementation(declaration, class_name, bufnr)
+  local prefix = class_name ~= '' and (class_name .. '::') or ''
   local text = ts.get_node_text(declaration, bufnr, {})
 
   -- Remove keywords that shouldn't be present in method implementations
@@ -62,7 +62,9 @@ local function declaration_to_implementation(declaration, namespace, bufnr)
   local identifier = ts_util.declarator_identifier(declarator)
   local function_name = ts.get_node_text(identifier, bufnr, {})
   function_name = string.gsub(function_name, '%W', '%%%1')
-  text = string.gsub(text, function_name, prefix .. function_name)
+  if prefix ~= '' then
+    text = string.gsub(text, function_name, prefix .. function_name)
+  end
 
   -- Remove semicolon
   text = string.sub(text, 1, -2)
@@ -91,27 +93,66 @@ local function get_implemenations(root)
   return strings
 end
 
-function M.implement_methods(namespaces)
+local function ns_key(namespaces)
+  return table.concat(namespaces, '::')
+end
+
+function M.implement_methods(groups)
   local path = api.nvim_buf_get_name(0)
   local root, _ = fs.open_file_in_buffer(path)
 
-  local strings = {}
   local existing_implemenations = get_implemenations(root)
-  for _, v in pairs(namespaces) do
-    local name = v['name']
-    for i = 1, #v['declarations'] do
-      local declaration = v['declarations'][i]
-      local implementation = declaration_to_implementation(declaration, name, M.header_bufnr)
+
+  -- Group declarations by namespace path, preserving order
+  local ns_order = {}
+  local ns_map = {}
+  for _, v in ipairs(groups) do
+    local key = ns_key(v.namespaces)
+    if not ns_map[key] then
+      ns_map[key] = { namespaces = v.namespaces, items = {} }
+      table.insert(ns_order, key)
+    end
+    for i = 1, #v.declarations do
+      local declaration = v.declarations[i]
+      local implementation = declaration_to_implementation(declaration, v.name, M.header_bufnr)
       local implementation_title = string.gsub(implementation, '%).*', '')
       implementation_title = implementation_title .. ')'
       if not vim.tbl_contains(existing_implemenations, implementation_title) then
-        table.insert(strings, implementation .. brace_pattern)
+        table.insert(ns_map[key].items, implementation .. brace_pattern)
+      end
+    end
+  end
+
+  -- Build output: wrap in namespace blocks where needed
+  local output = {}
+  for _, key in ipairs(ns_order) do
+    local group = ns_map[key]
+    if #group.items > 0 then
+      local namespaces = group.namespaces
+      if #namespaces > 0 then
+        -- Open namespace blocks
+        for _, ns in ipairs(namespaces) do
+          table.insert(output, 'namespace ' .. ns .. ' {\n\n')
+        end
+        -- Insert implementations
+        for _, impl in ipairs(group.items) do
+          table.insert(output, impl)
+        end
+        -- Close namespace blocks (reverse order)
+        for i = #namespaces, 1, -1 do
+          table.insert(output, '}  // namespace ' .. namespaces[i] .. '\n\n')
+        end
+      else
+        -- No namespace, insert directly
+        for _, impl in ipairs(group.items) do
+          table.insert(output, impl)
+        end
       end
     end
   end
 
   local fd = uv.fs_open(path, 'a', 438)
-  uv.fs_write(fd, strings, 0)
+  uv.fs_write(fd, output, 0)
   uv.fs_close(fd)
 
   -- It is neccessary to reload the buffer because
